@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+/*
+ * Тема только светлая: в эксперименте важен контраст «тёмные цифры на светлом»
+ * и цвет фона одинаковый у всех участников.
+ */
+:root {
+  color-scheme: light;
+  --bg: #faf9f7;
+  --surface: #ffffff;
+  --soft: #f4f3f1;
+  --ink: #1c1917;
+  --muted: #78716c;
+  --faint: #a8a29e;
+  --line: #e7e5e4;
+  --line-strong: #d6d3d1;
+  --ok: #15803d;
+  --ok-soft: #f0fdf4;
+  --bad: #b91c1c;
+  --bad-soft: #fef2f2;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-soft: var(--soft);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--ink);
+  color: var(--surface);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  touch-action: manipulation;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Полоса оставшегося времени на ответ. */
+@keyframes drain {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+  }
+}
