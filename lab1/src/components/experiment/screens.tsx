@@ -54,11 +54,11 @@ export function IntroScreen({ onStart }: { onStart: (name: string) => void }) {
 
       <div className="flex items-center gap-6 rounded-3xl border border-line bg-surface p-5">
         <div className="flex shrink-0 gap-3">
-          <Glyph item={item(5, "a")} className="size-14 text-ink" />
-          <Glyph item={item(5, "p")} className="size-14 text-ink" />
+          <Glyph item={item(1, "a")} className="size-14 text-ink" />
+          <Glyph item={item(1, "p")} className="size-14 text-ink" />
         </div>
         <p className="text-sm leading-relaxed text-muted">
-          Цифра 5 и пиктограмма 5. Число точек в квадрате равно цифре, пустой квадрат — ноль.
+          Цифра 1 и пиктограмма 1. Число точек в квадрате равно цифре, пустой квадрат — ноль.
         </p>
       </div>
 
