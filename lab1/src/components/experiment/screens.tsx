@@ -8,7 +8,7 @@ import { MAX_FAILS, MIXED_LENGTH, MIXED_ROUNDS, PRACTICE_LENGTH } from "@/lib/ex
 import type { BlockKind } from "@/lib/experiment/engine";
 import { glyphColor } from "@/lib/experiment/palette";
 import { sameItem } from "@/lib/experiment/scoring";
-import type { Condition, Item } from "@/lib/experiment/types";
+import type { Condition, Group, Item } from "@/lib/experiment/types";
 import { SequenceGrid } from "./sequence-grid";
 
 function Eyebrow({ children }: { children: ReactNode }) {
@@ -17,15 +17,21 @@ function Eyebrow({ children }: { children: ReactNode }) {
 
 const item = (v: number, f: Item["f"]): Item => ({ v, f });
 
-export function IntroScreen({ onStart }: { onStart: (name: string) => void }) {
+type IntroProps = {
+  initialGroup: Group;
+  onStart: (name: string, group: Group) => void;
+};
+
+export function IntroScreen({ initialGroup, onStart }: IntroProps) {
   const [name, setName] = useState("");
+  const [isControl, setIsControl] = useState(initialGroup === "control");
 
   return (
     <form
       className="space-y-10 pt-8 sm:pt-14"
       onSubmit={(e) => {
         e.preventDefault();
-        onStart(name.trim());
+        onStart(name.trim(), isControl ? "control" : "test");
       }}
     >
       <div className="space-y-4">
@@ -76,6 +82,19 @@ export function IntroScreen({ onStart }: { onStart: (name: string) => void }) {
           className="h-12 w-full rounded-2xl border border-line-strong bg-surface px-4 text-base outline-none placeholder:text-faint focus:border-ink"
         />
       </div>
+
+      <label className="flex cursor-pointer items-start gap-3 text-sm text-muted">
+        <input
+          type="checkbox"
+          checked={isControl}
+          onChange={(e) => setIsControl(e.target.checked)}
+          className="mt-0.5 size-4 shrink-0 accent-ink"
+        />
+        <span>
+          Я — автор программы (контрольная группа). Отметьте, если вы разрабатывали этот тест, а не
+          проходите его как участник.
+        </span>
+      </label>
 
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-3">

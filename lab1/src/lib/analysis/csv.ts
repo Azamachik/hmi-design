@@ -24,6 +24,7 @@ export function participantsCsv(sessions: readonly StoredSession[]) {
     [
       "id",
       "name",
+      "group",
       "created_at",
       "order_seq",
       "order_color",
@@ -40,6 +41,7 @@ export function participantsCsv(sessions: readonly StoredSession[]) {
       return [
         s.id,
         s.name,
+        s.group,
         s.createdAt,
         s.blockOrder.seq.join(">"),
         s.blockOrder.color.join(">"),
@@ -60,6 +62,7 @@ export function trialsCsv(sessions: readonly StoredSession[]) {
     [
       "session_id",
       "name",
+      "group",
       "seq",
       "test",
       "condition",
@@ -75,6 +78,7 @@ export function trialsCsv(sessions: readonly StoredSession[]) {
       s.trials.map((t) => [
         s.id,
         s.name,
+        s.group,
         t.seq,
         t.test,
         t.condition,

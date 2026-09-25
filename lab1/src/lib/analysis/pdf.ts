@@ -1,15 +1,14 @@
 import type { Content, TableCell, TDocumentDefinitions } from "pdfmake/interfaces";
 import {
   DEFAULT_ANSWER_MS,
-  DEFAULT_ITEM_MS,
+  DEFAULT_EXPOSURE_MS,
   MAX_FAILS,
   MAX_LENGTH,
-  MIN_EXPOSURE_MS,
   MIXED_LENGTH,
   MIXED_ROUNDS,
   START_LENGTH,
 } from "@/lib/experiment/config";
-import { CONDITION_LABEL } from "@/lib/experiment/labels";
+import { CONDITION_LABEL, GROUP_SHORT } from "@/lib/experiment/labels";
 import { formatDate, num, percent, plural } from "@/lib/format";
 import { buildFigures, figureNumber, type FigureKey } from "./figures";
 import {
@@ -112,7 +111,11 @@ const commentsOn = (c: Comparison) =>
   [resultParagraph(c), significanceParagraph(c), peoplesParagraph(c)].filter(Boolean).join(" ");
 
 /** Сводный отчёт по образцу лабораторной работы: цель, гипотезы, методика, результаты, выводы. */
-export function buildReportDocument(report: Report, generatedAt: Date): TDocumentDefinitions {
+export function buildReportDocument(
+  report: Report,
+  generatedAt: Date,
+  groupLabel: string | null = null,
+): TDocumentDefinitions {
   const { h1, h2, mixed } = report;
   const claim1: Claim = { fav: formsOf(h1.seq.favored), other: formsOf(h1.seq.other) };
   const claim2: Claim = { fav: formsOf(h2.color.favored), other: formsOf(h2.color.other) };
@@ -144,7 +147,9 @@ export function buildReportDocument(report: Report, generatedAt: Date): TDocumen
     { text: "Арабские цифры и пиктограммы: цветовое кодирование", bold: true, alignment: "center" },
     { text: "Вариант 7", alignment: "center" },
     {
-      text: `Сводный отчёт по результатам ${participants}, ${formatDate(generatedAt.toISOString())}`,
+      text:
+        `Сводный отчёт по результатам ${participants}` +
+        `${groupLabel ? ` · ${groupLabel}` : ""}, ${formatDate(generatedAt.toISOString())}`,
       alignment: "center",
       margin: [0, 0, 0, 10],
     },
@@ -188,12 +193,21 @@ export function buildReportDocument(report: Report, generatedAt: Date): TDocumen
       "тест 3 — то же, что тест 1, но только с цифрами: яркими (у каждой цифры свой цвет) и монохромными (тёмными).",
     ),
     para(
-      `Ряд показывается целиком на ${num(DEFAULT_ITEM_MS / 1000, 1)} с на элемент (не меньше ${num(MIN_EXPOSURE_MS / 1000, 1)} с), ` +
+      `Ряд показывается целиком на ${num(DEFAULT_EXPOSURE_MS / 1000, 1)} с — одинаково для любой его длины, ` +
         `на ответ отводится ${Math.round(DEFAULT_ANSWER_MS / 1000)} с. Порядок блоков внутри пар выбирается случайно для каждого участника, ` +
         "чтобы эффект тренировки не смешивался с различием условий. Так как каждый участник проходит оба условия, " +
         "их сравнивают парным t-критерием (двусторонний, уровень значимости 0,05). Запись «± σ» означает стандартное отклонение " +
         "между участниками; p — вероятность получить такую разницу случайно.",
     ),
+    ...(groupLabel
+      ? []
+      : [
+          para(
+            "Участники делятся на тестовую группу и контрольную — это авторы программы, которые проходят тот же тест. " +
+              "Так можно сравнить результаты обычных пользователей с результатами тех, кто писал программу; " +
+              "у каждой группы своя статистика (столбец «Группа» в приложении А).",
+          ),
+        ]),
 
     heading("4", "Результаты"),
     para(
@@ -294,21 +308,35 @@ export function buildReportDocument(report: Report, generatedAt: Date): TDocumen
       { text: "ПРИЛОЖЕНИЕ А", bold: true, alignment: "center", margin: [0, 14, 0, 2] },
       { text: "Результаты участников", alignment: "center", margin: [0, 0, 0, 6] },
     ),
-    dataTable(
-      table.participants,
-      "Результаты участников (тесты 1 и 3 — наибольшая длина ряда, тест 2 — доля верных элементов)",
-      ["№ Участник", "Т1 цифры", "Т1 пикт.", "Т2 цифры", "Т2 пикт.", "Т3 яркие", "Т3 монохр."],
-      report.rows.map((r, i) => [
-        `${i + 1}. ${r.name ?? "Без имени"}`,
-        r.spanArabic ?? "—",
-        r.spanPicto ?? "—",
-        r.mixedArabic === null ? "—" : percent(r.mixedArabic),
-        r.mixedPicto === null ? "—" : percent(r.mixedPicto),
-        r.spanColored ?? "—",
-        r.spanMono ?? "—",
-      ]),
-      ["*", 40, 40, 44, 44, 44, 50],
-    ),
+    (() => {
+      // Колонка «Группа» нужна только в сводном отчёте: в отчёте по одной группе она была бы одинаковой во всех строках.
+      const showGroupColumn = !groupLabel;
+      return dataTable(
+        table.participants,
+        "Результаты участников (тесты 1 и 3 — наибольшая длина ряда, тест 2 — доля верных элементов)",
+        [
+          "№ Участник",
+          ...(showGroupColumn ? ["Группа"] : []),
+          "Т1 цифры",
+          "Т1 пикт.",
+          "Т2 цифры",
+          "Т2 пикт.",
+          "Т3 яркие",
+          "Т3 монохр.",
+        ],
+        report.rows.map((r, i) => [
+          `${i + 1}. ${r.name ?? "Без имени"}`,
+          ...(showGroupColumn ? [GROUP_SHORT[r.group]] : []),
+          r.spanArabic ?? "—",
+          r.spanPicto ?? "—",
+          r.mixedArabic === null ? "—" : percent(r.mixedArabic),
+          r.mixedPicto === null ? "—" : percent(r.mixedPicto),
+          r.spanColored ?? "—",
+          r.spanMono ?? "—",
+        ]),
+        ["*", ...(showGroupColumn ? [40] : []), 40, 40, 44, 44, 44, 50],
+      );
+    })(),
   );
 
   return {

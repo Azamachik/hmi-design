@@ -50,10 +50,11 @@ export function comparisonLine(c: Comparison) {
 }
 
 /** Сводка обычным текстом — её удобно вставить в отчёт. */
-export function formatReportText(report: Report) {
+export function formatReportText(report: Report, groupLabel?: string | null) {
   const { h1, h2 } = report;
   const lines = [
     "Сводка ЛР 1 · арабские цифры и пиктограммы, цветовое кодирование",
+    ...(groupLabel ? [`Группа: ${groupLabel}`] : []),
     `Участников: ${report.participants}`,
     "",
     `ГИПОТЕЗА 1. ${HYPOTHESIS_1} — ${STATUS_TEXT[h1.status].label.toLowerCase()}`,

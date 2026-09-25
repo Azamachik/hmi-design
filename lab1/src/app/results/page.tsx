@@ -3,7 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
 import { buildFigures, FIGURE_KEYS } from "@/lib/analysis/figures";
-import { buildReport, type HypothesisStatus } from "@/lib/analysis/report";
+import { buildReport, type GroupFilter, type HypothesisStatus } from "@/lib/analysis/report";
 import {
   formatReportText,
   HYPOTHESIS_1,
@@ -12,11 +12,12 @@ import {
 } from "@/lib/analysis/text";
 import { load } from "@/lib/db/load";
 import { listSessions } from "@/lib/db/sessions";
-import { CONDITION_LABEL } from "@/lib/experiment/labels";
+import { CONDITION_LABEL, GROUP_LABEL } from "@/lib/experiment/labels";
 import { num, percent } from "@/lib/format";
 import { ComparisonCard } from "@/components/results/comparison-card";
 import { FigureBlock } from "@/components/results/figure-block";
 import { CopyButton } from "@/components/results/copy-button";
+import { GroupTabs } from "@/components/results/group-tabs";
 import { ParticipantsTable } from "@/components/results/participants-table";
 import { PdfButton } from "@/components/results/pdf-button";
 import {
@@ -60,14 +61,23 @@ function HypothesisSection({
   );
 }
 
-const exportLink = (kind: string, label: string) => (
-  <a key={kind} href={`/api/export?kind=${kind}`} download className={buttonStyles("secondary", "h-10")}>
+const exportLink = (kind: string, group: GroupFilter, label: string) => (
+  <a
+    key={kind}
+    href={`/api/export?kind=${kind}${group === "all" ? "" : `&group=${group}`}`}
+    download
+    className={buttonStyles("secondary", "h-10")}
+  >
     {label}
   </a>
 );
 
-export default async function ResultsPage() {
+export default async function ResultsPage({ searchParams }: PageProps<"/results">) {
   await connection();
+  const params = await searchParams;
+  const g = Array.isArray(params.group) ? params.group[0] : params.group;
+  const groupFilter: GroupFilter = g === "test" || g === "control" ? g : "all";
+
   const loaded = await load(listSessions);
   if (loaded.state !== "ok") return <Unavailable reason={loaded.state} />;
 
@@ -88,7 +98,26 @@ export default async function ResultsPage() {
     );
   }
 
-  const report = buildReport(sessions);
+  const counts: Record<GroupFilter, number> = {
+    all: sessions.length,
+    test: sessions.filter((s) => s.group === "test").length,
+    control: sessions.filter((s) => s.group === "control").length,
+  };
+  const scoped = groupFilter === "all" ? sessions : sessions.filter((s) => s.group === groupFilter);
+  const groupLabel = groupFilter === "all" ? null : GROUP_LABEL[groupFilter];
+
+  if (scoped.length === 0) {
+    return (
+      <PageShell>
+        <PageTitle title="Результаты" actions={<GroupTabs active={groupFilter} counts={counts} />} />
+        <EmptyState title={`${groupLabel} — пока пусто`}>
+          <p>Здесь появится сводка, как только кто-нибудь из этой группы пройдёт тест до конца.</p>
+        </EmptyState>
+      </PageShell>
+    );
+  }
+
+  const report = buildReport(scoped);
   const figures = buildFigures(report, WEB_CHART_FONT);
   const { mixed } = report;
   const rate = (hit: number, of: number) => percent(of ? (hit / of) * 100 : 0);
@@ -97,17 +126,17 @@ export default async function ResultsPage() {
     <PageShell>
       <PageTitle
         title="Результаты"
-        subtitle={`Участников: ${report.participants}`}
-        actions={
-          <>
-            <PdfButton report={report} />
-            <CopyButton text={formatReportText(report)} label="Копировать сводку" />
-            {exportLink("participants", "CSV участников")}
-            {exportLink("trials", "CSV попыток")}
-            {exportLink("json", "JSON")}
-          </>
-        }
+        subtitle={`Участников: ${report.participants}${groupLabel ? ` · ${groupLabel}` : ""}`}
+        actions={<GroupTabs active={groupFilter} counts={counts} />}
       />
+
+      <div className="flex flex-wrap gap-2">
+        <PdfButton report={report} groupLabel={groupLabel} />
+        <CopyButton text={formatReportText(report, groupLabel)} label="Копировать сводку" />
+        {exportLink("participants", groupFilter, "CSV участников")}
+        {exportLink("trials", groupFilter, "CSV попыток")}
+        {exportLink("json", groupFilter, "JSON")}
+      </div>
 
       <HypothesisSection index={1} title={HYPOTHESIS_1} status={report.h1.status}>
         <ComparisonCard comparison={report.h1.seq} />
@@ -163,6 +192,7 @@ export default async function ResultsPage() {
         <ParticipantsTable
           caption="Таблица 3 — Результаты участников"
           rows={report.rows}
+          showGroup={groupFilter === "all"}
         />
       </section>
     </PageShell>

@@ -12,6 +12,10 @@ export type TestId = (typeof TESTS)[number];
 export const CONDITIONS = ["picto", "arabic", "mixed", "colored", "mono"] as const;
 export type Condition = (typeof CONDITIONS)[number];
 
+/** control — авторы программы (контрольная группа по методичке), test — остальные участники. */
+export const GROUPS = ["test", "control"] as const;
+export type Group = (typeof GROUPS)[number];
+
 export type TrialRecord = {
   /** Сквозной номер попытки в сессии, с нуля. */
   seq: number;
@@ -34,8 +38,8 @@ export type BlockOrder = {
 };
 
 export type Settings = {
-  /** Время показа на один элемент, мс. */
-  itemMs: number;
+  /** Время показа ряда, мс — одинаково для любой его длины. */
+  exposureMs: number;
   /** Лимит времени на ответ, мс. */
   answerMs: number;
 };
@@ -45,6 +49,7 @@ export type Device = { touch: boolean; w: number; h: number };
 export type SessionPayload = {
   id: string;
   name: string | null;
+  group: Group;
   blockOrder: BlockOrder;
   settings: Settings;
   device: Device | null;

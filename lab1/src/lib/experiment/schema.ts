@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CONDITIONS, FORMS, TESTS } from "./types";
+import { CONDITIONS, FORMS, GROUPS, TESTS } from "./types";
 
 const item = z.object({
   v: z.number().int().min(0).max(9),
@@ -32,12 +32,13 @@ export const sessionSchema = z.object({
     .max(60)
     .nullable()
     .transform((s) => s || null),
+  group: z.enum(GROUPS),
   blockOrder: z.object({
     seq: z.array(z.enum(CONDITIONS)).max(2),
     color: z.array(z.enum(CONDITIONS)).max(2),
   }),
   settings: z.object({
-    itemMs: z.number().int().min(50).max(10_000),
+    exposureMs: z.number().int().min(200).max(30_000),
     answerMs: z.number().int().min(1000).max(600_000),
   }),
   device: z

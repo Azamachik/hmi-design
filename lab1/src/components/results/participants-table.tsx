@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ParticipantRow } from "@/lib/analysis/report";
+import { GROUP_SHORT } from "@/lib/experiment/labels";
 import { num } from "@/lib/format";
 import { LocalTime } from "./local-time";
 
@@ -7,10 +8,20 @@ const dash = "—";
 const span = (v: number | null) => (v === null ? dash : String(v));
 const pct = (v: number | null) => (v === null ? dash : `${num(v, 0)}%`);
 
-export function ParticipantsTable({ rows, caption }: { rows: ParticipantRow[]; caption: string }) {
+export function ParticipantsTable({
+  rows,
+  caption,
+  showGroup = false,
+}: {
+  rows: ParticipantRow[];
+  caption: string;
+  /** Столбец «Группа» имеет смысл только в сводном (нефильтрованном) виде. */
+  showGroup?: boolean;
+}) {
   const head = [
     "№",
     "Участник",
+    ...(showGroup ? ["Группа"] : []),
     "Дата",
     "Цифры",
     "Пикт.",
@@ -19,6 +30,7 @@ export function ParticipantsTable({ rows, caption }: { rows: ParticipantRow[]; c
     "Яркие",
     "Монохр.",
   ];
+  const leadCols = showGroup ? 4 : 3;
   return (
     <figure className="space-y-3">
       <figcaption className="text-sm font-medium">{caption}</figcaption>
@@ -26,7 +38,7 @@ export function ParticipantsTable({ rows, caption }: { rows: ParticipantRow[]; c
         <table className="tabular w-full min-w-max border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-line text-xs text-muted">
-              <th className="px-4 pt-3 font-medium" colSpan={3} />
+              <th className="px-4 pt-3 font-medium" colSpan={leadCols} />
               <th className="px-4 pt-3 text-center font-medium" colSpan={2}>
                 Тест 1 · длина ряда
               </th>
@@ -39,7 +51,7 @@ export function ParticipantsTable({ rows, caption }: { rows: ParticipantRow[]; c
             </tr>
             <tr className="border-b border-line text-xs text-muted">
               {head.map((h, i) => (
-                <th key={h} className={`px-4 pb-3 pt-1 font-medium ${i > 2 ? "text-right" : ""}`}>
+                <th key={h} className={`px-4 pb-3 pt-1 font-medium ${i >= leadCols ? "text-right" : ""}`}>
                   {h}
                 </th>
               ))}
@@ -54,6 +66,7 @@ export function ParticipantsTable({ rows, caption }: { rows: ParticipantRow[]; c
                     {r.name ?? "Без имени"}
                   </Link>
                 </td>
+                {showGroup && <td className="px-4 py-3 text-muted">{GROUP_SHORT[r.group]}</td>}
                 <td className="px-4 py-3 text-muted">
                   <LocalTime iso={r.createdAt} />
                 </td>

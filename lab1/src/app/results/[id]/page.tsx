@@ -5,7 +5,7 @@ import { connection } from "next/server";
 import { summarizeSession } from "@/lib/analysis/summary";
 import { load } from "@/lib/db/load";
 import { getSession } from "@/lib/db/sessions";
-import { CONDITION_LABEL } from "@/lib/experiment/labels";
+import { CONDITION_LABEL, GROUP_LABEL } from "@/lib/experiment/labels";
 import type { Condition } from "@/lib/experiment/types";
 import { percent } from "@/lib/format";
 import { LocalTime } from "@/components/results/local-time";
@@ -41,6 +41,7 @@ export default async function ParticipantPage({ params }: PageProps<"/results/[i
         subtitle={
           <>
             <LocalTime iso={session.createdAt} />
+            {` · ${GROUP_LABEL[session.group]}`}
             {session.device && ` · ${session.device.touch ? "сенсорный экран" : "компьютер"}, ${session.device.w}×${session.device.h}`}
           </>
         }

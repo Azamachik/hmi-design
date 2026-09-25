@@ -2,6 +2,7 @@ import type {
   BlockOrder,
   Condition,
   Device,
+  Group,
   Item,
   SessionPayload,
   Settings,
@@ -14,14 +15,14 @@ import { ensureSchema, getDb, select } from "./client";
 // Одним запросом: если сессия с таким id уже есть (повторная отправка), попытки не дублируются.
 export const INSERT_SESSION = `
   with s as (
-    insert into sessions (id, name, block_order, settings, device)
-    values ($1::uuid, $2::text, $3::jsonb, $4::jsonb, $5::jsonb)
+    insert into sessions (id, name, group_name, block_order, settings, device)
+    values ($1::uuid, $2::text, $3::text, $4::jsonb, $5::jsonb, $6::jsonb)
     on conflict (id) do nothing
     returning id
   )
   insert into trials (session_id, seq, test, condition, idx, length, shown, answer, correct, answer_ms, timed_out)
   select s.id, t.seq, t.test, t.condition, t.idx, t.length, t.shown, t.answer, t.correct, t.answer_ms, t.timed_out
-  from s, jsonb_to_recordset($6::jsonb) as t(
+  from s, jsonb_to_recordset($7::jsonb) as t(
     seq int, test text, condition text, idx int, length int,
     shown jsonb, answer jsonb, correct boolean, answer_ms int, timed_out boolean
   )
@@ -31,7 +32,7 @@ export const INSERT_SESSION = `
 const SELECT_SESSIONS = `
   select id,
          to_char(created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as created_at,
-         name, block_order, settings, device
+         name, group_name, block_order, settings, device
   from sessions
 `;
 
@@ -44,6 +45,7 @@ type SessionRow = {
   id: string;
   created_at: string;
   name: string | null;
+  group_name: Group;
   block_order: BlockOrder;
   settings: Settings;
   device: Device | null;
@@ -98,6 +100,7 @@ function toSession(row: SessionRow, trials: TrialRecord[]): StoredSession {
     id: row.id,
     createdAt: row.created_at,
     name: row.name,
+    group: row.group_name,
     blockOrder: row.block_order,
     settings: row.settings,
     device: row.device,
@@ -110,6 +113,7 @@ export async function insertSession(session: SessionPayload) {
   await getDb().query(INSERT_SESSION, [
     session.id,
     session.name,
+    session.group,
     JSON.stringify(session.blockOrder),
     JSON.stringify(session.settings),
     session.device ? JSON.stringify(session.device) : null,

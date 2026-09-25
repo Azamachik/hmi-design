@@ -20,7 +20,7 @@ const FONT_FILES = {
  * PDF собирается в браузере: библиотека и шрифт (около 1 МБ) подгружаются только по клику,
  * поэтому страница результатов остаётся лёгкой, а серверу не нужны ни шрифты, ни лишняя память.
  */
-export function PdfButton({ report }: { report: Report }) {
+export function PdfButton({ report, groupLabel }: { report: Report; groupLabel?: string | null }) {
   const [state, setState] = useState<State>("idle");
 
   async function download() {
@@ -39,7 +39,9 @@ export function PdfButton({ report }: { report: Report }) {
 
       const now = new Date();
       const day = `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}`;
-      await api.createPdf(buildReportDocument(report, now)).download(`lab1-report-${day}.pdf`);
+      await api
+        .createPdf(buildReportDocument(report, now, groupLabel ?? null))
+        .download(`lab1-report-${day}.pdf`);
       setState("idle");
     } catch (error) {
       console.error("PDF export failed", error);

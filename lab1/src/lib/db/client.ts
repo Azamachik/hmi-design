@@ -30,10 +30,13 @@ const SCHEMA = [
     id uuid primary key,
     created_at timestamptz not null default now(),
     name text,
+    group_name text not null default 'test',
     block_order jsonb not null,
     settings jsonb not null,
     device jsonb
   )`,
+  // Для баз, где таблица sessions создана более ранней версией схемы (без group_name).
+  `alter table sessions add column if not exists group_name text not null default 'test'`,
   `create table if not exists trials (
     id bigserial primary key,
     session_id uuid not null references sessions (id) on delete cascade,

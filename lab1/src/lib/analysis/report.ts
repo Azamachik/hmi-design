@@ -1,4 +1,4 @@
-import type { Condition, StoredSession } from "@/lib/experiment/types";
+import type { Condition, Group, StoredSession } from "@/lib/experiment/types";
 import { describe, mean, pairedT, type PairedT, type Series } from "./stats";
 import {
   summarizeSession,
@@ -49,6 +49,7 @@ export type MixedTotals = {
 export type ParticipantRow = {
   id: string;
   name: string | null;
+  group: Group;
   createdAt: string;
   spanArabic: number | null;
   spanPicto: number | null;
@@ -71,6 +72,9 @@ export type Charts = {
   /** Доля воспроизведённых элементов по значению цифры, отдельно для цифр и пиктограмм. */
   digits: { value: number; a: Tally; p: Tally }[];
 };
+
+/** "all" — совмещённый отчёт по всем участникам, помимо фильтрации по одной из групп. */
+export type GroupFilter = "all" | Group;
 
 export type Report = {
   participants: number;
@@ -285,6 +289,7 @@ export function participantRow(session: StoredSession, s: SessionSummary): Parti
   return {
     id: session.id,
     name: session.name,
+    group: session.group,
     createdAt: session.createdAt,
     spanArabic: s.seq.arabic?.span ?? null,
     spanPicto: s.seq.picto?.span ?? null,

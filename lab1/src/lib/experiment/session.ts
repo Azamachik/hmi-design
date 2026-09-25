@@ -4,6 +4,7 @@ import { isExact } from "./scoring";
 import type {
   BlockOrder,
   Device,
+  Group,
   Item,
   SessionPayload,
   Settings,
@@ -32,6 +33,7 @@ export type Session = {
   phase: Phase;
   id: string;
   name: string | null;
+  group: Group;
   blockOrder: BlockOrder;
   plan: BlockDef[];
   blockIdx: number;
@@ -44,7 +46,14 @@ export type Session = {
 };
 
 export type Action =
-  | { type: "start"; id: string; name: string | null; seed: number; device: Device | null }
+  | {
+      type: "start";
+      id: string;
+      name: string | null;
+      group: Group;
+      seed: number;
+      device: Device | null;
+    }
   | { type: "begin-block" }
   | { type: "expose" }
   | { type: "recall"; now: number }
@@ -68,6 +77,7 @@ function startSession(a: Extract<Action, { type: "start" }>): Session {
     phase: { name: "block-intro" },
     id: a.id,
     name: a.name,
+    group: a.group,
     blockOrder,
     plan,
     blockIdx: 0,
@@ -164,6 +174,7 @@ export function toPayload(s: Session, settings: Settings): SessionPayload {
   return {
     id: s.id,
     name: s.name,
+    group: s.group,
     blockOrder: s.blockOrder,
     settings,
     device: s.device,

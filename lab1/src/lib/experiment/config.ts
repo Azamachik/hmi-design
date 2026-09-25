@@ -8,12 +8,7 @@ export const MIXED_ROUNDS = 6;
 
 export const PRACTICE_LENGTH = 3;
 
-export const DEFAULT_ITEM_MS = 500;
-export const MIN_EXPOSURE_MS = 1500;
+/** Ряд показывается целиком на это время — одинаково для любой длины, как того требует методика. */
+export const DEFAULT_EXPOSURE_MS = 4000;
 export const DEFAULT_ANSWER_MS = 20_000;
 export const READY_MS = 900;
-
-/** Ряд показывается целиком; время экспозиции растёт с его длиной. */
-export function exposureMs(length: number, itemMs: number) {
-  return Math.max(MIN_EXPOSURE_MS, length * itemMs);
-}

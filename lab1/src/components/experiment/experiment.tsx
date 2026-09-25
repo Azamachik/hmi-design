@@ -6,7 +6,7 @@ import { useEffect, useEffectEvent, useReducer, type ReactNode } from "react";
 import { saveSession } from "@/app/actions";
 import { Glyph } from "@/components/glyph";
 import { Button } from "@/components/ui/button";
-import { exposureMs, MIXED_ROUNDS, READY_MS } from "@/lib/experiment/config";
+import { MIXED_ROUNDS, READY_MS } from "@/lib/experiment/config";
 import { glyphColor } from "@/lib/experiment/palette";
 import {
   currentBlock,
@@ -17,7 +17,7 @@ import {
   type Phase,
   type Session,
 } from "@/lib/experiment/session";
-import type { Device, SessionPayload } from "@/lib/experiment/types";
+import type { Device, Group, SessionPayload } from "@/lib/experiment/types";
 import { newId, randomSeed } from "@/lib/id";
 import { AnswerSlots } from "./answer-slots";
 import { Keypad } from "./keypad";
@@ -31,10 +31,12 @@ import {
 import { SequenceGrid } from "./sequence-grid";
 
 type Props = {
-  /** Время показа на один элемент, мс. */
-  itemMs: number;
+  /** Время показа ряда, мс — одинаково для любой длины. */
+  exposureMs: number;
   /** Лимит времени на ответ, мс. */
   answerMs: number;
+  /** Группа по умолчанию (из ?g=control); можно переключить на экране старта. */
+  initialGroup: Group;
 };
 
 function readDevice(): Device {
@@ -102,7 +104,7 @@ function Shell({ right, progress, quiet, children }: ShellProps) {
   );
 }
 
-export function Experiment({ itemMs, answerMs }: Props) {
+export function Experiment({ exposureMs, answerMs, initialGroup }: Props) {
   const router = useRouter();
   const [session, dispatch] = useReducer(reduce, null);
 
@@ -110,7 +112,6 @@ export function Experiment({ itemMs, answerMs }: Props) {
   const phaseName = phase?.name;
   const trial = phase && "trial" in phase ? phase.trial : null;
   const trialKey = trial?.key ?? -1;
-  const shownLength = trial?.shown.length ?? 0;
 
   useEffect(() => {
     const after = (ms: number, make: () => Action) => {
@@ -121,7 +122,7 @@ export function Experiment({ itemMs, answerMs }: Props) {
       case "ready":
         return after(READY_MS, () => ({ type: "expose" }));
       case "show":
-        return after(exposureMs(shownLength, itemMs), () => ({
+        return after(exposureMs, () => ({
           type: "recall",
           now: performance.now(),
         }));
@@ -132,7 +133,7 @@ export function Experiment({ itemMs, answerMs }: Props) {
           timedOut: true,
         }));
     }
-  }, [phaseName, trialKey, shownLength, itemMs, answerMs]);
+  }, [phaseName, trialKey, exposureMs, answerMs]);
 
   useEffect(() => {
     if (phaseName !== "answer") return;
@@ -156,7 +157,7 @@ export function Experiment({ itemMs, answerMs }: Props) {
 
   const save = useEffectEvent((signal: { cancelled: boolean }) => {
     if (!session) return;
-    saveSession(toPayload(session, { itemMs, answerMs })).then(
+    saveSession(toPayload(session, { exposureMs, answerMs })).then(
       (result) => {
         if (signal.cancelled) return;
         if (result.ok) router.push(`/results/${result.id}`);
@@ -183,11 +184,13 @@ export function Experiment({ itemMs, answerMs }: Props) {
     return (
       <Shell right={<Link href="/results">Результаты</Link>}>
         <IntroScreen
-          onStart={(name) =>
+          initialGroup={initialGroup}
+          onStart={(name, group) =>
             dispatch({
               type: "start",
               id: newId(),
               name: name || null,
+              group,
               seed: randomSeed(),
               device: readDevice(),
             })
@@ -316,7 +319,7 @@ export function Experiment({ itemMs, answerMs }: Props) {
         <SaveErrorScreen
           message={phase.message}
           onRetry={() => dispatch({ type: "retry" })}
-          onDownload={() => downloadJson(toPayload(session, { itemMs, answerMs }))}
+          onDownload={() => downloadJson(toPayload(session, { exposureMs, answerMs }))}
         />,
       );
   }
