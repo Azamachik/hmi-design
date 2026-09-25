@@ -13,21 +13,22 @@ export const VERDICT_TEXT: Record<Verdict, { label: string; tone: Tone }> = {
   equal: { label: "Различий нет", tone: "neutral" },
   "opposite-trend": { label: "Скорее не подтверждается", tone: "bad" },
   opposite: { label: "Не подтверждается", tone: "bad" },
-  "no-data": { label: "Нет данных", tone: "neutral" },
+  "no-data": { label: "Мало данных", tone: "neutral" },
 };
 
 export const STATUS_TEXT: Record<HypothesisStatus, { label: string; tone: Tone }> = {
   confirmed: { label: "Подтверждается", tone: "good" },
+  tendency: { label: "Скорее подтверждается", tone: "good" },
   partial: { label: "Подтверждается частично", tone: "neutral" },
   rejected: { label: "Не подтверждается", tone: "bad" },
-  "no-data": { label: "Нет данных", tone: "neutral" },
+  "no-data": { label: "Мало данных", tone: "neutral" },
 };
 
 const unitOf = (c: Comparison) => (c.unit === "%" ? "%" : "");
 
 /** Пояснение к вердикту: значима ли разница и что это значит. */
 export function verdictNote(c: Comparison) {
-  if (c.verdict === "no-data") return "Нужны участники, прошедшие оба условия.";
+  if (c.verdict === "no-data") return "Для сравнения нужно минимум два участника, прошедших оба условия.";
   if (!c.t) return "Один участник: значимость оценить нельзя.";
   const significant = c.t.p < 0.05;
   if (c.verdict === "equal") return "Средние совпадают.";

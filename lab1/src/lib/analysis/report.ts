@@ -8,7 +8,8 @@ import {
 } from "./summary";
 
 export type Verdict = "confirmed" | "trend" | "equal" | "opposite-trend" | "opposite" | "no-data";
-export type HypothesisStatus = "confirmed" | "partial" | "rejected" | "no-data";
+/** tendency — во всех тестах среднее в пользу гипотезы, но значимо не везде. */
+export type HypothesisStatus = "confirmed" | "tendency" | "partial" | "rejected" | "no-data";
 
 export type Comparison = {
   id: "seq" | "mixed" | "color";
@@ -57,6 +58,20 @@ export type ParticipantRow = {
   spanMono: number | null;
 };
 
+export type Tally = { shown: number; recalled: number };
+
+export type SpanCondition = "arabic" | "picto" | "colored" | "mono";
+
+/** Данные для диаграмм, которые нельзя восстановить из итогов по участникам. */
+export type Charts = {
+  /** Верно воспроизведённые ряды по длине ряда, все участники вместе. */
+  lengthCurve: Record<SpanCondition, { length: number; attempts: number; correct: number }[]>;
+  /** Смешанный тест: доля воспроизведённых элементов по позиции в ряду. */
+  positions: { position: number; a: Tally; p: Tally }[];
+  /** Доля воспроизведённых элементов по значению цифры, отдельно для цифр и пиктограмм. */
+  digits: { value: number; a: Tally; p: Tally }[];
+};
+
 export type Report = {
   participants: number;
   h1: { seq: Comparison; mixed: Comparison; status: HypothesisStatus };
@@ -64,13 +79,15 @@ export type Report = {
   conditions: ConditionStats[];
   mixed: MixedTotals | null;
   rows: ParticipantRow[];
+  charts: Charts;
 };
 
 const EPS = 1e-9;
 const ALPHA = 0.05;
 
 function verdictOf(n: number, meanDiff: number, t: PairedT | null): Verdict {
-  if (n === 0) return "no-data";
+  // Парному критерию нужно минимум два участника; по одному человеку выводов не делаем.
+  if (n < 2) return "no-data";
   const significant = t !== null && t.p < ALPHA;
   if (meanDiff > EPS) return significant ? "confirmed" : "trend";
   if (meanDiff < -EPS) return significant ? "opposite" : "opposite-trend";
@@ -104,8 +121,60 @@ function statusOf(comparisons: Comparison[]): HypothesisStatus {
   const withData = comparisons.filter((c) => c.verdict !== "no-data");
   if (!withData.length) return "no-data";
   const supporting = withData.filter((c) => c.verdict === "confirmed" || c.verdict === "trend");
-  if (supporting.length === withData.length) return "confirmed";
+  if (supporting.length === withData.length) {
+    return withData.every((c) => c.verdict === "confirmed") ? "confirmed" : "tendency";
+  }
   return supporting.length === 0 ? "rejected" : "partial";
+}
+
+const SPAN_CONDITIONS: SpanCondition[] = ["arabic", "picto", "colored", "mono"];
+const emptyTally = (): Tally => ({ shown: 0, recalled: 0 });
+
+function buildCharts(sessions: readonly StoredSession[]): Charts {
+  const lengths = new Map<string, { attempts: number; correct: number }>();
+  const positions = new Map<number, { a: Tally; p: Tally }>();
+  const digits = new Map<number, { a: Tally; p: Tally }>();
+
+  for (const session of sessions) {
+    for (const t of session.trials) {
+      if (t.condition !== "mixed") {
+        const key = `${t.condition}:${t.length}`;
+        const cell = lengths.get(key) ?? { attempts: 0, correct: 0 };
+        cell.attempts++;
+        if (t.correct) cell.correct++;
+        lengths.set(key, cell);
+      }
+      t.shown.forEach((item, i) => {
+        const recalled = t.answer.some((a) => a.v === item.v && a.f === item.f);
+        const digit = digits.get(item.v) ?? { a: emptyTally(), p: emptyTally() };
+        digit[item.f].shown++;
+        if (recalled) digit[item.f].recalled++;
+        digits.set(item.v, digit);
+        if (t.condition === "mixed") {
+          const pos = positions.get(i + 1) ?? { a: emptyTally(), p: emptyTally() };
+          pos[item.f].shown++;
+          if (recalled) pos[item.f].recalled++;
+          positions.set(i + 1, pos);
+        }
+      });
+    }
+  }
+
+  const lengthCurve = Object.fromEntries(
+    SPAN_CONDITIONS.map((c) => [
+      c,
+      [...lengths]
+        .filter(([key]) => key.startsWith(`${c}:`))
+        .map(([key, v]) => ({ length: Number(key.split(":")[1]), ...v }))
+        .sort((x, y) => x.length - y.length),
+    ]),
+  ) as Charts["lengthCurve"];
+
+  return {
+    lengthCurve,
+    positions: [...positions].map(([position, v]) => ({ position, ...v })).sort((x, y) => x.position - y.position),
+    digits: [...digits].map(([value, v]) => ({ value, ...v })).sort((x, y) => x.value - y.value),
+  };
 }
 
 const rate = (hit: number, total: number) => (total ? (hit / total) * 100 : 0);
@@ -207,6 +276,7 @@ export function buildReport(sessions: readonly StoredSession[]): Report {
     ],
     mixed: mixedTotals(summaries),
     rows: sessions.map((session, i) => participantRow(session, summaries[i])),
+    charts: buildCharts(sessions),
   };
 }
 

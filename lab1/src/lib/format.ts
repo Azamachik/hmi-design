@@ -5,6 +5,16 @@ export function num(x: number, digits = 1) {
   return x.toFixed(digits).replace(".", ",").replace("-", "−");
 }
 
+/** Русское склонение по числу: plural(2, ["участник", "участника", "участников"]) → «участника». */
+export function plural(n: number, forms: [one: string, few: string, many: string]) {
+  const last2 = Math.abs(n) % 100;
+  const last = last2 % 10;
+  if (last2 >= 11 && last2 <= 14) return forms[2];
+  if (last === 1) return forms[0];
+  if (last >= 2 && last <= 4) return forms[1];
+  return forms[2];
+}
+
 export function percent(x: number) {
   return `${num(x, 0)}%`;
 }

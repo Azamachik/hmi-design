@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
+import { buildFigures, FIGURE_KEYS } from "@/lib/analysis/figures";
 import { buildReport, type HypothesisStatus } from "@/lib/analysis/report";
 import {
   formatReportText,
@@ -14,8 +15,10 @@ import { listSessions } from "@/lib/db/sessions";
 import { CONDITION_LABEL } from "@/lib/experiment/labels";
 import { num, percent } from "@/lib/format";
 import { ComparisonCard } from "@/components/results/comparison-card";
+import { FigureBlock } from "@/components/results/figure-block";
 import { CopyButton } from "@/components/results/copy-button";
 import { ParticipantsTable } from "@/components/results/participants-table";
+import { PdfButton } from "@/components/results/pdf-button";
 import {
   Badge,
   DataTable,
@@ -27,6 +30,9 @@ import { Unavailable } from "@/components/results/unavailable";
 import { buttonStyles } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Результаты" };
+
+// Шрифт подписей в диаграммах: переменная next/font задана на <html>, поэтому var() работает внутри инлайнового SVG.
+const WEB_CHART_FONT = "var(--font-inter), ui-sans-serif, system-ui, sans-serif";
 
 function HypothesisSection({
   index,
@@ -83,6 +89,7 @@ export default async function ResultsPage() {
   }
 
   const report = buildReport(sessions);
+  const figures = buildFigures(report, WEB_CHART_FONT);
   const { mixed } = report;
   const rate = (hit: number, of: number) => percent(of ? (hit / of) * 100 : 0);
 
@@ -93,6 +100,7 @@ export default async function ResultsPage() {
         subtitle={`Участников: ${report.participants}`}
         actions={
           <>
+            <PdfButton report={report} />
             <CopyButton text={formatReportText(report)} label="Копировать сводку" />
             {exportLink("participants", "CSV участников")}
             {exportLink("trials", "CSV попыток")}
@@ -109,6 +117,13 @@ export default async function ResultsPage() {
       <HypothesisSection index={2} title={HYPOTHESIS_2} status={report.h2.status}>
         <ComparisonCard comparison={report.h2.color} />
       </HypothesisSection>
+
+      <section className="space-y-8">
+        <h2 className="text-2xl font-semibold tracking-tight">Диаграммы</h2>
+        {FIGURE_KEYS.map((key) => figures[key]).map(
+          (figure) => figure && <FigureBlock key={figure.key} figure={figure} />,
+        )}
+      </section>
 
       <section className="space-y-6">
         <h2 className="text-2xl font-semibold tracking-tight">Таблицы</h2>
