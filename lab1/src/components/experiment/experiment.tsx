@@ -30,6 +30,8 @@ import {
 } from "./screens";
 import { SequenceGrid } from "./sequence-grid";
 
+const SAVE_ATTEMPTS = 3;
+
 type Props = {
   /** Время показа ряда, мс — одинаково для любой длины. */
   exposureMs: number;
@@ -155,26 +157,37 @@ export function Experiment({ exposureMs, answerMs, initialGroup }: Props) {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [started]);
 
-  const save = useEffectEvent((signal: { cancelled: boolean }) => {
+  // Сбой связи (у телефона, у спящей базы) не должен стоить участнику десяти минут теста: пробуем несколько раз.
+  const save = useEffectEvent(async (signal: { cancelled: boolean }) => {
     if (!session) return;
-    saveSession(toPayload(session, { exposureMs, answerMs })).then(
-      (result) => {
+    const payload = toPayload(session, { exposureMs, answerMs });
+    let failure = "Нет связи с сервером.";
+
+    for (let attempt = 1; attempt <= SAVE_ATTEMPTS; attempt++) {
+      try {
+        const result = await saveSession(payload);
         if (signal.cancelled) return;
-        if (result.ok) router.push(`/results/${result.id}`);
-        else dispatch({ type: "save-failed", message: result.error });
-      },
-      () => {
-        if (!signal.cancelled) {
-          dispatch({ type: "save-failed", message: "Нет связи с сервером." });
+        if (result.ok) {
+          router.push(`/results/${result.id}`);
+          return;
         }
-      },
-    );
+        failure = result.error;
+        if (!result.retryable) break;
+      } catch (error) {
+        failure = `Нет связи с сервером (${error instanceof Error ? error.message : "неизвестная ошибка"}).`;
+      }
+      if (attempt < SAVE_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, 1500 * attempt));
+        if (signal.cancelled) return;
+      }
+    }
+    dispatch({ type: "save-failed", message: failure });
   });
 
   useEffect(() => {
     if (phaseName !== "saving") return;
     const signal = { cancelled: false };
-    save(signal);
+    void save(signal);
     return () => {
       signal.cancelled = true;
     };
