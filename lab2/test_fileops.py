@@ -81,8 +81,6 @@ class MaskTest(unittest.TestCase):
         self.assertEqual(fileops.add_prefix('a.txt', 'new_'), 'new_a.txt')
         self.assertEqual(fileops.add_suffix('a.tar.gz', '_old'), 'a.tar_old.gz')
         self.assertEqual(fileops.add_suffix('README', '_old'), 'README_old')
-        self.assertEqual(fileops.replace_text('IMG_01.jpg', 'img_', 'фото '), 'фото 01.jpg')
-        self.assertEqual(fileops.replace_text('a.txt', '', 'x'), 'a.txt')
         self.assertEqual(fileops.change_extension('a.txt', '.md'), 'a.md')
         self.assertEqual(fileops.change_extension('README', 'md'), 'README.md')
         self.assertEqual(fileops.change_extension('a.txt', ''), 'a')

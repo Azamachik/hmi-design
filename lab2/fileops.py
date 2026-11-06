@@ -152,12 +152,6 @@ def add_suffix(name: str, text: str) -> str:
     return base + text + extension
 
 
-def replace_text(name: str, old: str, new: str) -> str:
-    if not old:
-        return name
-    return re.sub(re.escape(old), lambda found: new, name, flags=re.IGNORECASE)
-
-
 def change_extension(name: str, extension: str) -> str:
     extension = extension.strip().lstrip('.')
     base = os.path.splitext(name)[0]

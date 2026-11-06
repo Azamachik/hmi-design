@@ -23,7 +23,6 @@ CONTROL_KEYS = {65: 'select_all', 70: 'select_by_mask', 79: 'choose_directory', 
 ACTIONS = [
     ('prefix', 'добавить текст в начало имени', 'Текст:'),
     ('suffix', 'добавить текст в конец имени (перед расширением)', 'Текст:'),
-    ('replace', 'заменить текст в имени', 'Найти:'),
     ('extension', 'сменить расширение', 'Расширение:'),
 ]
 PREVIEW_ROWS = 7
@@ -55,7 +54,7 @@ HELP_SECTIONS = [
     ('Переименование группы файлов',
      'Выделите файлы мышью с Ctrl или Shift либо по маске («Правка → Выделить по маске…», Ctrl+F). '
      'Затем выберите «Правка → Переименовать группу…» (Ctrl+R) и укажите, что сделать с именами: '
-     'добавить текст в начало или в конец, заменить текст либо сменить расширение. '
+     'добавить текст в начало или в конец либо сменить расширение. '
      'Новые имена сразу видны в предпросмотре.'),
     ('Маска', '* — любое число любых символов, ? — ровно один символ. Например: *.txt, IMG_*, отчёт_?.docx.'),
     ('Проверка имён',
@@ -206,7 +205,6 @@ class GroupDialog(Dialog):
         self.changes = None
         self.action = tk.StringVar(value=ACTIONS[0][0])
         self.text = tk.StringVar()
-        self.replacement = tk.StringVar()
 
         ttk.Label(self.body, text='Выбрано: ' + fileops.files_text(len(files))).grid(
             row=0, column=0, columnspan=2, sticky='w')
@@ -219,14 +217,10 @@ class GroupDialog(Dialog):
         self.text_label.grid(row=2, column=0, sticky='w', padx=(0, 10), pady=(10, 0))
         self.text_entry = ttk.Entry(self.body, textvariable=self.text, width=44)
         self.text_entry.grid(row=2, column=1, sticky='we', pady=(10, 0))
-        self.replacement_label = ttk.Label(self.body, text='Заменить на:')
-        self.replacement_label.grid(row=3, column=0, sticky='w', padx=(0, 10), pady=(6, 0))
-        self.replacement_entry = ttk.Entry(self.body, textvariable=self.replacement, width=44)
-        self.replacement_entry.grid(row=3, column=1, sticky='we', pady=(6, 0))
 
-        ttk.Label(self.body, text='Предпросмотр:').grid(row=4, column=0, columnspan=2, sticky='w', pady=(12, 2))
+        ttk.Label(self.body, text='Предпросмотр:').grid(row=3, column=0, columnspan=2, sticky='w', pady=(12, 2))
         preview = ttk.Frame(self.body)
-        preview.grid(row=5, column=0, columnspan=2, sticky='we')
+        preview.grid(row=4, column=0, columnspan=2, sticky='we')
         self.tree = ttk.Treeview(preview, columns=('old', 'new'), show='headings', selectmode='none',
                                  height=min(max(len(files), 3), PREVIEW_ROWS))
         width = tkfont.nametofont('TkDefaultFont').measure('0' * 34)
@@ -238,9 +232,9 @@ class GroupDialog(Dialog):
         self.tree.pack(side='left', fill='both', expand=True)
         scrollbar.pack(side='right', fill='y')
 
-        self.add_message(6)
-        self.accept_button = self.add_buttons(7, 'Переименовать', self.accept)
-        for variable in (self.action, self.text, self.replacement):
+        self.add_message(5)
+        self.accept_button = self.add_buttons(6, 'Переименовать', self.accept)
+        for variable in (self.action, self.text):
             variable.trace_add('write', lambda *args: self.update_preview())
         # после выбора действия мышью текст можно вводить сразу, без щелчка по полю
         self.action.trace_add('write', lambda *args: self.text_entry.focus_set())
@@ -253,18 +247,13 @@ class GroupDialog(Dialog):
             return fileops.add_prefix(name, text)
         if action == 'suffix':
             return fileops.add_suffix(name, text)
-        if action == 'replace':
-            return fileops.replace_text(name, text, self.replacement.get())
         return fileops.change_extension(name, text)
 
     def update_preview(self) -> None:
         action = self.action.get()
         self.text_label.configure(text=next(label for key, _, label in ACTIONS if key == action))
-        replacing = ['!disabled'] if action == 'replace' else ['disabled']
-        self.replacement_label.state(replacing)
-        self.replacement_entry.state(replacing)
 
-        plan = [Rename(file.name, self.new_name(file.name)) for file in self.files]
+        plan =[Rename(file.name, self.new_name(file.name)) for file in self.files]
         self.tree.delete(*self.tree.get_children())
         for step in plan:
             self.tree.insert('', 'end', values=(step.old, step.new))
